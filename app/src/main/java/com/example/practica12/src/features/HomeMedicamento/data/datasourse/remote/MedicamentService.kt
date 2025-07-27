@@ -9,10 +9,10 @@ import retrofit2.http.*
 interface MedicamentService {
 
     @GET("medicaments")
-    suspend fun getAllMedicaments(): Response<MedicamentResponseDto>  // ✅ CAMBIO
+    suspend fun getAllMedicaments(): Response<MedicamentResponseDto>
 
     @GET("medicaments/{id}")
-    suspend fun getMedicamentById(@Path("id") id: Int): Response<MedicamentResponseDto>  // ✅ CAMBIO
+    suspend fun getMedicamentById(@Path("id") id: Int): Response<MedicamentResponseDto>
 
     @Multipart
     @POST("medicaments")

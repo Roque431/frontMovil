@@ -30,7 +30,7 @@ import com.example.practica12.src.features.HomeMedicamento.presentation.viewmode
 fun AddMedicamentScreen(
     navController: NavController,
     viewModel: AddMedicamentViewModel = hiltViewModel(),
-    medicamentId: Int? = null // ✅ NUEVO: Para editar medicamento
+    medicamentId: Int? = null // ✅ Para editar medicamento
 ) {
     var medicamentName by remember { mutableStateOf("") }
     var dose by remember { mutableStateOf("") }
@@ -43,6 +43,7 @@ fun AddMedicamentScreen(
     // ✅ CARGAR DATOS SI ES MODO EDICIÓN
     LaunchedEffect(medicamentId) {
         if (medicamentId != null) {
+            println("✏️ AddMedicamentScreen: Cargando medicamento para editar ID: $medicamentId")
             viewModel.loadMedicamentForEdit(medicamentId)
         }
     }
@@ -50,10 +51,10 @@ fun AddMedicamentScreen(
     // ✅ OBSERVAR DATOS PRECARGADOS
     LaunchedEffect(uiState.medicamentToEdit) {
         uiState.medicamentToEdit?.let { medicament ->
+            println("✏️ AddMedicamentScreen: Datos cargados para editar: ${medicament.name}")
             medicamentName = medicament.name
             dose = medicament.dose
             time = medicament.time
-            // Si hay imagen, puedes cargarla aquí
         }
     }
 
@@ -82,6 +83,24 @@ fun AddMedicamentScreen(
     ) { isGranted ->
         if (isGranted) {
             cameraPreviewLauncher.launch(null)
+        }
+    }
+
+    // ✅ MANEJO DE ÉXITO MEJORADO
+    if (uiState.isSuccess) {
+        LaunchedEffect(uiState.isSuccess) {
+            println("✅ AddMedicamentScreen: Operación exitosa, notificando refresh")
+
+            // ✅ NOTIFICAR AL HOME SCREEN QUE DEBE REFRESCAR
+            navController.previousBackStackEntry
+                ?.savedStateHandle
+                ?.set("refresh_needed", true)
+
+            // ✅ RESETEAR ESTADO ANTES DE NAVEGAR
+            viewModel.resetSuccess()
+
+            // ✅ NAVEGAR DE VUELTA
+            navController.navigateUp()
         }
     }
 
@@ -255,13 +274,15 @@ fun AddMedicamentScreen(
             Button(
                 onClick = {
                     if (isEditMode) {
+                        println("✏️ AddMedicamentScreen: Actualizando medicamento ID: $medicamentId")
                         viewModel.updateMedicament(
-                            id = medicamentId!!,
+                            id = medicamentId,
                             name = medicamentName,
                             dose = dose,
                             time = time
                         )
                     } else {
+                        println("➕ AddMedicamentScreen: Creando nuevo medicamento")
                         viewModel.saveMedicament(
                             name = medicamentName,
                             dose = dose,
@@ -292,12 +313,6 @@ fun AddMedicamentScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = Color(0xFF6C63FF))
-                }
-            }
-
-            if (uiState.isSuccess) {
-                LaunchedEffect(uiState.isSuccess) {
-                    navController.navigateUp()
                 }
             }
 

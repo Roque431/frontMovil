@@ -32,6 +32,27 @@ fun HomeScreen(
     val user by viewModel.user.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
+    // ✅ RECARGA AUTOMÁTICA cuando regresa a la pantalla
+    LaunchedEffect(Unit) {
+        println("🔄 HomeScreen: Recargando medicamentos...")
+        viewModel.loadMedicaments()
+    }
+
+    // ✅ ESCUCHAR eventos de refresh desde otras pantallas
+    LaunchedEffect(navController.currentBackStackEntry) {
+        val refreshNeeded = navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.get<Boolean>("refresh_needed") ?: false
+
+        if (refreshNeeded) {
+            println("🔄 HomeScreen: Refresh solicitado desde otra pantalla")
+            viewModel.loadMedicaments()
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("refresh_needed", false)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -154,12 +175,13 @@ fun HomeScreen(
                         onCardClick = {
                             // navController.navigate("medicament_detail/${medicament.id}")
                         },
-                        // ✅ NUEVO: Función para editar
+                        // ✅ FUNCIÓN PARA EDITAR
                         onEditClick = { medicamentToEdit ->
                             navController.navigate("edit_medicament/${medicamentToEdit.id}")
                         },
-                        // ✅ NUEVO: Función para eliminar
+                        // ✅ FUNCIÓN PARA ELIMINAR
                         onDeleteClick = { medicamentToDelete ->
+                            println("🗑️ HomeScreen: Eliminando medicamento ${medicamentToDelete.id}")
                             viewModel.deleteMedicament(medicamentToDelete.id)
                         }
                     )

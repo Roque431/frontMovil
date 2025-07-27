@@ -26,10 +26,10 @@ fun NavigationWrapper(startDestination: String = "login") {
         }
 
         composable("home") {
-            HomeScreen(navController = navController) // 🆕 AHORA SÍ CONECTADO
+            HomeScreen(navController = navController)
         }
 
-        // 🆕 RUTAS DE MEDICAMENTOS
+
         composable("medicamentos") {
             HomeScreen(navController = navController)
         }
@@ -42,7 +42,7 @@ fun NavigationWrapper(startDestination: String = "login") {
             val medicamentId = backStackEntry.arguments?.getString("medicamentId")?.toIntOrNull()
             AddMedicamentScreen(
                 navController = navController,
-                medicamentId = medicamentId // ✅ Pasar ID para editar
+                medicamentId = medicamentId //
             )
         }
 
