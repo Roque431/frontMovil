@@ -62,7 +62,7 @@ class MedicamentRepositoryImpl @Inject constructor(
         }
     }
 
-    // ✅ MÉTODO COMPLETAMENTE REESCRITO
+
     override suspend fun createMedicament(
         name: String,
         dose: String,
