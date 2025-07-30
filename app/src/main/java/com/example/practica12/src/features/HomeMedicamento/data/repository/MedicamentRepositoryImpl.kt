@@ -57,7 +57,6 @@ class MedicamentRepositoryImpl @Inject constructor(
             println("Excepción al obtener medicamentos de la red: ${e.message}")
         }
     }
-
     override suspend fun getAllMedicamentsLocal(): Flow<Result<List<Medicament>>> {
         return try {
             medicamentoDao.getAll().map { list ->
