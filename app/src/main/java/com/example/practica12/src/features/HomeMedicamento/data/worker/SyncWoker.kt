@@ -25,7 +25,6 @@ class SyncWorker @AssistedInject constructor(
     private val medicamentService: MedicamentService,
     private val networkChecker: NetworkChecker
 ) : CoroutineWorker(context, workerParams) {
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             if (!networkChecker.isOnline()) {
