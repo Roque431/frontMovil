@@ -1,6 +1,12 @@
-package com.example.practica12.src.features.HomeMedicamento.di
+package com.example.practica12.features.HomeMedicamento.di
 
+import android.content.Context
+import androidx.room.Room
+import com.example.practica12.src.core.hardware.data.NetworkChecker
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.example.practica12.src.features.HomeMedicamento.data.datasourse.remote.MedicamentService
+import com.example.practica12.src.features.HomeMedicamento.data.local.dao.MedicamentoDao
+import com.example.practica12.src.features.HomeMedicamento.data.local.database.AppDatabase
 import com.example.practica12.src.features.HomeMedicamento.data.repository.MedicamentRepositoryImpl
 import com.example.practica12.src.features.HomeMedicamento.domain.repository.MedicamentRepository
 import com.example.practica12.src.features.HomeMedicamento.domain.usecase.CreateMedicamentUseCase
@@ -19,12 +25,33 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object MedicamentModule {
 
+    // 🌐 Retrofit: Servicio remoto
     @Provides
     @Singleton
     fun provideMedicamentService(retrofit: Retrofit): MedicamentService {
         return retrofit.create(MedicamentService::class.java)
     }
 
+    // 🧩 Room: Base de datos
+    @Provides
+    @Singleton
+    fun provideDatabase( @ApplicationContext appContext: Context): AppDatabase {
+        return Room.databaseBuilder(
+            appContext,
+            AppDatabase::class.java,
+            "medicamentos_db"
+        )
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+
+    // 🧩 Room: DAO
+    @Provides
+    fun provideMedicamentoDao(db: AppDatabase): MedicamentoDao {
+        return db.medicamentoDao()
+    }
+
+    // 🔁 Repositorio
     @Provides
     @Singleton
     fun provideMedicamentRepository(
@@ -33,12 +60,14 @@ object MedicamentModule {
         return medicamentRepositoryImpl
     }
 
+    // 🧠 Use Cases
     @Provides
     @Singleton
     fun provideGetAllMedicamentsUseCase(
-        repository: MedicamentRepository
+        repository: MedicamentRepository,
+        networkChecker: NetworkChecker
     ): GetAllMedicamentsUseCase {
-        return GetAllMedicamentsUseCase(repository)
+        return GetAllMedicamentsUseCase(repository, networkChecker)
     }
 
     @Provides

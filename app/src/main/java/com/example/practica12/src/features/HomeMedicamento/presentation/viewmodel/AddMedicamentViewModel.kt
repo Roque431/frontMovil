@@ -20,6 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -89,7 +93,7 @@ class AddMedicamentViewModel @Inject constructor(
             try {
                 println("🔥 PROCESANDO IMAGEN: $imageUri")
 
-                val imageFile = createTempFileFromUri(imageUri)
+                val imageFile = saveImagePermanently(imageUri)
 
                 println("🔥 ARCHIVO CREADO: ${imageFile.absolutePath}")
                 println("🔥 ARCHIVO EXISTE: ${imageFile.exists()}")
@@ -112,22 +116,24 @@ class AddMedicamentViewModel @Inject constructor(
         }
     }
 
-    private suspend fun createTempFileFromUri(uri: Uri): File {
+    private suspend fun saveImagePermanently(uri: Uri): File {
         return withContext(Dispatchers.IO) {
-            println("🔥 CREANDO ARCHIVO TEMPORAL DESDE: $uri")
+            println("🔥 GUARDANDO IMAGEN PERMANENTEMENTE DESDE: $uri")
 
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val tempFile = File(context.cacheDir, "temp_medicament_${System.currentTimeMillis()}.jpg")
+            val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val storageDir = context.getExternalFilesDir(null) // Usar almacenamiento externo para persistencia
+            val permanentFile = File(storageDir, "MEDICAMENT_${timeStamp}.jpg")
 
-            println("🔥 RUTA ARCHIVO TEMPORAL: ${tempFile.absolutePath}")
+            println("🔥 RUTA ARCHIVO PERMANENTE: ${permanentFile.absolutePath}")
 
-            tempFile.outputStream().use { output ->
-                inputStream?.copyTo(output)
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                FileOutputStream(permanentFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
             }
-            inputStream?.close()
 
-            println("🔥 ARCHIVO TEMPORAL CREADO EXITOSAMENTE")
-            tempFile
+            println("🔥 ARCHIVO PERMANENTE GUARDADO EXITOSAMENTE")
+            permanentFile
         }
     }
 
@@ -312,3 +318,4 @@ data class AddMedicamentUiState(
     val imageFile: File? = null,
     val medicamentToEdit: Medicament? = null // ✅ NUEVO: Para modo edición
 )
+

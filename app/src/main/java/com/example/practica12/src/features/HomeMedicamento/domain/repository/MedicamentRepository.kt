@@ -7,6 +7,7 @@ import java.io.File
 interface MedicamentRepository {
     suspend fun getAllMedicaments(): Flow<Result<List<Medicament>>>
     suspend fun getMedicamentById(id: Int): Flow<Result<Medicament>>
+    suspend fun getAllMedicamentsLocal(): Flow<Result<List<Medicament>>>
 
     // ✅ CAMBIO: imageUrl: String? → imageFile: File?
     suspend fun createMedicament(

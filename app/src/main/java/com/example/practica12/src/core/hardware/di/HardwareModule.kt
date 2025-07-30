@@ -1,11 +1,14 @@
 package com.example.practica12.src.core.hardware.di
 
-
+import android.content.Context
 import com.example.practica12.src.core.hardware.data.CameraRepositoryImpl
+import com.example.practica12.src.core.hardware.data.NetworkChecker
 import com.example.practica12.src.core.hardware.domain.CameraRepository
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -16,8 +19,17 @@ abstract class HardwareModule {
     @Binds
     @Singleton
     abstract fun bindCameraRepository(
-        // El parámetro DEBE ser la clase de implementación
-        // Hilt sabrá cómo crear CameraRepositoryImpl porque tiene @Inject constructor()
         repositoryImpl: CameraRepositoryImpl
-    ): CameraRepository // El valor de retorno DEBE ser la interfaz
+    ): CameraRepository
+
+    companion object {
+
+        @Provides
+        @Singleton
+        fun provideNetworkChecker(
+            @ApplicationContext context: Context
+        ): NetworkChecker {
+            return NetworkChecker(context)
+        }
+    }
 }

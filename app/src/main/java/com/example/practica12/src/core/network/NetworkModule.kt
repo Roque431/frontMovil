@@ -1,7 +1,7 @@
 package com.example.practica12.src.core.network
 
 import android.content.Context
-import com.example.practica12.src.features.HomeMedicamento.di.MedicamentModule
+import com.example.practica12.features.HomeMedicamento.di.MedicamentModule
 import com.example.practica12.src.core.network.interceptor.AddTokenInterceptor
 import com.example.practica12.src.core.network.interceptor.TokenCaptureInterceptor
 import com.example.practica12.src.core.datastore.DataStoreManager

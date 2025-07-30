@@ -29,16 +29,14 @@ class SyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             if (!networkChecker.isOnline()) {
-                println("📡 SyncWorker: Sin conexión, se reintentará luego.")
+                println("📡 Sin conexión, se reintentará luego.")
                 return@withContext Result.retry()
             }
 
             val pendientes = medicamentoDao.getNoSincronizados()
-            println("🔍 SyncWorker: Medicamentos pendientes de sincronizar: ${pendientes.size}")
             var sincronizados = 0
 
             pendientes.forEach { localMed ->
-                println("🔄 SyncWorker: Intentando sincronizar medicamento: ${localMed.nombre} (ID Local: ${localMed.id})")
                 try {
                     val nameBody = localMed.nombre.toRequestBody("text/plain".toMediaTypeOrNull())
                     val doseBody = localMed.dosis.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -46,18 +44,15 @@ class SyncWorker @AssistedInject constructor(
 
                     val imagePart: MultipartBody.Part? = localMed.imagePath?.let { path ->
                         val file = File(path)
-                        println("🖼️ SyncWorker: Ruta de imagen local: $path")
                         if (file.exists()) {
-                            println("✅ SyncWorker: Archivo de imagen local existe.")
                             val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
                             MultipartBody.Part.createFormData("image", file.name, requestFile)
                         } else {
-                            println("⚠️ SyncWorker: Imagen no encontrada en $path. No se adjuntará imagen.")
+                            println("⚠️ Imagen no encontrada en $path")
                             null
                         }
                     }
 
-                    println("📤 SyncWorker: Enviando a la API: ${localMed.nombre}")
                     val response = medicamentService.createMedicament(
                         name = nameBody,
                         dose = doseBody,
@@ -68,45 +63,37 @@ class SyncWorker @AssistedInject constructor(
                     if (response.isSuccessful) {
                         val serverMed = response.body()?.medicament
                         if (serverMed != null) {
-                            println("✅ SyncWorker: Medicamento sincronizado exitosamente: ${serverMed.name} (ID Servidor: ${serverMed.id})")
-                            // Actualizar el medicamento local con los datos del servidor
+                            println("✅ Medicamento sincronizado: ${serverMed.name}")
                             medicamentoDao.actualizar(
                                 localMed.copy(
                                     id = serverMed.id,
-                                    isSynced = true,
-                                    imageUrl = serverMed.imageUrl, // Actualizar imageUrl con la URL del servidor
-                                    imagePath = null // Si se sincroniza, la imagen ya no es local, se usa la URL
+                                    isSynced = true
                                 )
                             )
-                            println("💾 SyncWorker: Medicamento local actualizado en Room.")
                             sincronizados++
-                        } else {
-                            println("❌ SyncWorker: Respuesta exitosa de API, pero medicament es nulo para ${localMed.nombre}. Cuerpo: ${response.body()}")
                         }
                     } else {
-                        println("❌ SyncWorker: Falló la sincronización de ${localMed.nombre}. Código: ${response.code()}, Mensaje: ${response.message()}, ErrorBody: ${response.errorBody()?.string()}")
+                        println("❌ Falló la sincronización de ${localMed.nombre}")
                     }
 
                 } catch (e: Exception) {
-                    println("🚨 SyncWorker: Error sincronizando ${localMed.nombre}: ${e.message}")
-                    e.printStackTrace()
+                    println("🚨 Error sincronizando ${localMed.nombre}: ${e.message}")
                 }
             }
 
             if (sincronizados > 0) {
-                println("☁️ SyncWorker: Se sincronizaron $sincronizados medicamento(s) local(es).")
+                val prefs = applicationContext.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("synced_recently", true).apply()
+                println("☁️ Se sincronizaron $sincronizados medicamento(s) local(es).")
             } else {
-                println("📭 SyncWorker: No hubo medicamentos nuevos para sincronizar.")
+                println("📭 No hubo medicamentos nuevos para sincronizar.")
             }
 
             return@withContext Result.success()
 
         } catch (e: Exception) {
-            println("❌ SyncWorker: Error general en SyncWorker: ${e.message}")
-            e.printStackTrace()
+            println("❌ Error general en SyncWorker: ${e.message}")
             return@withContext Result.failure()
         }
     }
 }
-
-

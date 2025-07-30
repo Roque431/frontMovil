@@ -19,14 +19,15 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.practica12.src.features.HomeMedicamento.domain.model.Medicament
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MedicamentCard(
     medicament: Medicament,
     onCardClick: () -> Unit = {},
-    onEditClick: (Medicament) -> Unit = {}, // ✅ NUEVO
-    onDeleteClick: (Medicament) -> Unit = {} // ✅ NUEVO
+    onEditClick: (Medicament) -> Unit = {},
+    onDeleteClick: (Medicament) -> Unit = {}
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -34,9 +35,7 @@ fun MedicamentCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCardClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF3D37A1) // Color azul oscuro como en el diseño
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF3D37A1)),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -45,10 +44,7 @@ fun MedicamentCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Información del medicamento
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Nombre del Medicamento: ${medicament.name}",
                     fontSize = 14.sp,
@@ -56,7 +52,6 @@ fun MedicamentCard(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
                     text = "Dosis: ${medicament.dose}",
                     fontSize = 14.sp,
@@ -64,7 +59,6 @@ fun MedicamentCard(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
                     text = "Hora del día: ${medicament.time}",
                     fontSize = 14.sp,
@@ -73,43 +67,66 @@ fun MedicamentCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // 🔥 IMAGEN DEL MEDICAMENTO ACTUALIZADA
+            if (!medicament.isSynced) {
+                Text(
+                    text = "⏳ No sincronizado",
+                    fontSize = 12.sp,
+                    color = Color.Yellow,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Imagen
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Card(
                     modifier = Modifier.size(80.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        // ✅ NUEVA LÓGICA DE IMAGEN
-                        if (!medicament.imageUrl.isNullOrEmpty()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(medicament.imageUrl)
-                                    .crossfade(true)
-                                    .error(android.R.drawable.ic_menu_gallery) // Imagen de error
-                                    .placeholder(android.R.drawable.ic_menu_gallery) // Mientras carga
-                                    .build(),
-                                contentDescription = "Imagen de ${medicament.name}",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            // Emoji por defecto si no hay imagen
-                            Text(
-                                text = "💊",
-                                fontSize = 32.sp
-                            )
+                        val localFile = medicament.imagePath?.let { File(it) }
+                        when {
+                            localFile != null && localFile.exists() -> {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(localFile)
+                                        .crossfade(true)
+                                        .error(android.R.drawable.ic_menu_gallery)
+                                        .placeholder(android.R.drawable.ic_menu_gallery)
+                                        .build(),
+                                    contentDescription = "Imagen local de ${medicament.name}",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            !medicament.imageUrl.isNullOrEmpty() -> {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(medicament.imageUrl)
+                                        .crossfade(true)
+                                        .error(android.R.drawable.ic_menu_gallery)
+                                        .placeholder(android.R.drawable.ic_menu_gallery)
+                                        .build(),
+                                    contentDescription = "Imagen de ${medicament.name}",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            else -> {
+                                Text(
+                                    text = "💊",
+                                    fontSize = 32.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -117,43 +134,29 @@ fun MedicamentCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ✅ NUEVA SECCIÓN: Botones de acción
+            // Botones
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Botón Editar
                 Button(
                     onClick = { onEditClick(medicament) },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50) // Verde
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar",
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Editar", fontSize = 12.sp)
                 }
 
-                // Botón Eliminar
                 Button(
                     onClick = { showDeleteDialog = true },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF5722) // Rojo
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722)),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Eliminar", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Eliminar", fontSize = 12.sp)
                 }
@@ -161,33 +164,26 @@ fun MedicamentCard(
         }
     }
 
-    // ✅ DIÁLOGO DE CONFIRMACIÓN PARA ELIMINAR
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = {
-                Text("Confirmar eliminación")
-            },
-            text = {
-                Text("¿Estás seguro de que quieres eliminar el medicamento \"${medicament.name}\"?")
-            },
+            title = { Text("Confirmar eliminación") },
+            text = { Text("¿Deseas eliminar \"${medicament.name}\"?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteClick(medicament)
-                        showDeleteDialog = false
-                    }
-                ) {
+                TextButton(onClick = {
+                    onDeleteClick(medicament)
+                    showDeleteDialog = false
+                }) {
                     Text("Eliminar", color = Color(0xFFFF5722))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showDeleteDialog = false }
-                ) {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text("Cancelar")
                 }
             }
         )
     }
 }
+
+

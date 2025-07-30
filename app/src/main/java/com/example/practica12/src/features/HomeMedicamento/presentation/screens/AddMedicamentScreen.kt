@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.practica12.src.features.HomeMedicamento.presentation.viewmodel.AddMedicamentViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +56,14 @@ fun AddMedicamentScreen(
             medicamentName = medicament.name
             dose = medicament.dose
             time = medicament.time
+            // Si hay una imagen local, cargarla para la vista previa
+            medicament.imagePath?.let { path ->
+                val file = File(path)
+                if (file.exists()) {
+                    imageUri = Uri.fromFile(file)
+                    viewModel.processImageForPreview(imageUri!!)
+                }
+            }
         }
     }
 
@@ -257,6 +266,13 @@ fun AddMedicamentScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+                            isEditMode && uiState.medicamentToEdit?.imagePath != null -> {
+                                AsyncImage(
+                                    model = File(uiState.medicamentToEdit?.imagePath!!),
+                                    contentDescription = "Imagen actual",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             else -> {
                                 Text(
                                     text = "💊",
@@ -333,3 +349,4 @@ fun AddMedicamentScreen(
         }
     }
 }
+

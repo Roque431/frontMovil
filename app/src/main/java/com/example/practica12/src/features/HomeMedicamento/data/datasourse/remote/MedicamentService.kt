@@ -20,7 +20,7 @@ interface MedicamentService {
         @Part("name") name: RequestBody,
         @Part("dose") dose: RequestBody,
         @Part("time") time: RequestBody,
-        @Part image: MultipartBody.Part?
+        @Part("image") image: MultipartBody.Part? // Aseguramos que sea nullable y con nombre de parte
     ): Response<MedicamentResponseDto>
 
     @Multipart
@@ -30,9 +30,10 @@ interface MedicamentService {
         @Part("name") name: RequestBody,
         @Part("dose") dose: RequestBody,
         @Part("time") time: RequestBody,
-        @Part image: MultipartBody.Part?
+        @Part("image") image: MultipartBody.Part? // Aseguramos que sea nullable y con nombre de parte
     ): Response<MedicamentResponseDto>
 
     @DELETE("medicaments/{id}")
-    suspend fun deleteMedicament(@Path("id") id: Int): Response<MedicamentResponseDto>  // ✅ CAMBIO
+    suspend fun deleteMedicament(@Path("id") id: Int): Response<MedicamentResponseDto>
 }
+
