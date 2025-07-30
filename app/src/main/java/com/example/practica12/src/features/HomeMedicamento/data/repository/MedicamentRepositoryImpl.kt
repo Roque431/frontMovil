@@ -43,7 +43,6 @@ class MedicamentRepositoryImpl @Inject constructor(
             emit(Result.failure(e))
         }
     }
-
     override suspend fun getMedicamentById(id: Int): Flow<Result<Medicament>> = flow {
         try {
             val response = medicamentService.getMedicamentById(id)
@@ -63,7 +62,7 @@ class MedicamentRepositoryImpl @Inject constructor(
         }
     }
 
-    // ✅ MÉTODO COMPLETAMENTE REESCRITO
+
     override suspend fun createMedicament(
         name: String,
         dose: String,
