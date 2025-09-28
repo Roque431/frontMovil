@@ -19,11 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.practica12.src.core.hardware.data.NetworkChecker
+import com.example.practica12.MainActivity
 import com.example.practica12.src.features.HomeMedicamento.presentation.components.MedicamentCard
 import com.example.practica12.src.features.HomeMedicamento.presentation.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,40 +30,32 @@ fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val networkChecker = remember { NetworkChecker(context) }
-    val isOnline = remember { mutableStateOf(networkChecker.isOnline()) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
     val medicaments by viewModel.medicaments.collectAsState()
     val user by viewModel.user.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Monitorear cambios de conexión
+    // 🔒 BLOQUEAR CAPTURA DE PANTALLA - Agrega estas 4 líneas
+    val context = LocalContext.current
+    val activity = context as? MainActivity
+
     LaunchedEffect(Unit) {
-        while (true) {
-            val connected = networkChecker.isOnline()
-            if (!connected && isOnline.value) {
-                isOnline.value = false
-            } else if (connected && !isOnline.value) {
-                isOnline.value = true
-                scope.launch {
-                    snackbarHostState.showSnackbar("✅ Conexión restaurada")
-                    delay(1000) // Esperamos un poco para que SyncWorker termine
-                    viewModel.loadMedicaments() // 🔄 Refrescamos medicamentos desde servidor
-                }
-            }
-            delay(2000)
+        activity?.window?.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+    }
+
+    // ✅ Mostrar snackbar al recuperar conexión
+    LaunchedEffect(uiState.isOnline) {
+        if (uiState.isOnline) {
+            snackbarHostState.showSnackbar("✅ Conexión restaurada")
+            delay(1000)
+            viewModel.loadMedicaments()
         }
     }
 
-
-    LaunchedEffect(Unit) {
-        println("🔄 HomeScreen: Recargando medicamentos...")
-        viewModel.loadMedicaments()
-    }
-
+    // ✅ Volver a cargar medicamentos si venimos del Add/Edit
     LaunchedEffect(navController.currentBackStackEntry) {
         val refreshNeeded = navController.currentBackStackEntry
             ?.savedStateHandle
@@ -145,7 +136,7 @@ fun HomeScreen(
                 }
             }
 
-            if (!isOnline.value) {
+            if (!uiState.isOnline) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
