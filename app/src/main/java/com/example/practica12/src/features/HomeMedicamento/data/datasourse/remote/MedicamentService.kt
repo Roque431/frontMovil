@@ -20,7 +20,7 @@ interface MedicamentService {
         @Part("name") name: RequestBody,
         @Part("dose") dose: RequestBody,
         @Part("time") time: RequestBody,
-        @Part("image") image: MultipartBody.Part? // Aseguramos que sea nullable y con nombre de parte
+        @Part image: MultipartBody.Part? // Aseguramos que sea nullable y con nombre de parte
     ): Response<MedicamentResponseDto>
 
     @Multipart

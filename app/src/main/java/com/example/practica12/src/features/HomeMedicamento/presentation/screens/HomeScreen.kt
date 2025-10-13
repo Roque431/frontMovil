@@ -1,5 +1,8 @@
 package com.example.practica12.src.features.HomeMedicamento.presentation.screens
 
+import android.Manifest // Import para el permiso
+import androidx.activity.compose.rememberLauncherForActivityResult // Import para el launcher de permisos
+import androidx.activity.result.contract.ActivityResultContracts // Import para el contrato de permisos
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,14 +15,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.practica12.MainActivity
+import com.example.practica12.src.core.hardware.domain.GpsStatus// Import del enum
 import com.example.practica12.src.features.HomeMedicamento.presentation.components.MedicamentCard
 import com.example.practica12.src.features.HomeMedicamento.presentation.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
@@ -35,18 +37,27 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 🔒 BLOQUEAR CAPTURA DE PANTALLA - Agrega estas 4 líneas
-    val context = LocalContext.current
-    val activity = context as? MainActivity
+    // Recolectar el estado del GPS ---
+    val gpsStatus by viewModel.gpsStatus.collectAsState()
 
-    LaunchedEffect(Unit) {
-        activity?.window?.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            android.view.WindowManager.LayoutParams.FLAG_SECURE
-        )
+    //  solicitar permisos de ubicación ---
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+
+            } else {
+
+            }
+        }
+    )
+
+    // --- NUEVO: Efecto para solicitar el permiso si es necesario ---
+    LaunchedEffect(key1 = true) {
+        permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    // ✅ Mostrar snackbar al recuperar conexión
+    // Mostrar snackbar al recuperar conexión
     LaunchedEffect(uiState.isOnline) {
         if (uiState.isOnline) {
             snackbarHostState.showSnackbar("✅ Conexión restaurada")
@@ -55,7 +66,7 @@ fun HomeScreen(
         }
     }
 
-    // ✅ Volver a cargar medicamentos si venimos del Add/Edit
+    // Volver a cargar medicamentos si venimos del Add/Edit
     LaunchedEffect(navController.currentBackStackEntry) {
         val refreshNeeded = navController.currentBackStackEntry
             ?.savedStateHandle
@@ -120,21 +131,8 @@ fun HomeScreen(
         ) {
             item { WelcomeHeader(userName = user?.name ?: "Usuario") }
 
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "💊", fontSize = 60.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Control de Medicamentos",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2D2D2D)
-                    )
-                }
-            }
+            // --- NUEVO: Card para mostrar el estado del GPS ---
+            item { GpsStatusCard(status = gpsStatus) }
 
             if (!uiState.isOnline) {
                 item {
@@ -153,7 +151,10 @@ fun HomeScreen(
 
             if (uiState.isLoading) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator(color = Color(0xFF6C63FF))
                     }
                 }
@@ -193,6 +194,39 @@ fun HomeScreen(
     }
 }
 
+// --- NUEVO: Composable para la tarjeta de estado del GPS ---
+@Composable
+fun GpsStatusCard(status: GpsStatus) {
+    val (icon, text, color) = when (status) {
+        GpsStatus.CHECKING -> Triple("🔄", "Verificando estado del GPS...", Color.Gray)
+        GpsStatus.REAL -> Triple("🛰️", "Ubicación GPS: Real", Color(0xFF388E3C)) // Verde oscuro
+        GpsStatus.MOCK -> Triple("⚠️", "Ubicación GPS: Simulada (Mock)", Color(0xFFD32F2F)) // Rojo oscuro
+        GpsStatus.NO_LOCATION -> Triple("❓", "No se pudo obtener la ubicación", Color(0xFFFFA000)) // Naranja
+        GpsStatus.NO_PERMISSION -> Triple("🚫", "Se requieren permisos de ubicación", Color(0xFF7B1FA2)) // Morado
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = icon, fontSize = 24.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = text,
+                fontWeight = FontWeight.Medium,
+                color = color,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+
 @Composable
 fun WelcomeHeader(userName: String) {
     Card(
@@ -200,9 +234,22 @@ fun WelcomeHeader(userName: String) {
         colors = CardDefaults.cardColors(containerColor = Color(0xFF6C63FF)),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(text = "¡Bienvenido!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(text = userName, fontSize = 16.sp, color = Color.White.copy(alpha = 0.9f))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "¡Bienvenido!",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = userName,
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.9f)
+            )
         }
     }
 }
@@ -215,7 +262,9 @@ fun EmptyMedicamentsView() {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(32.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "📋", fontSize = 48.sp)

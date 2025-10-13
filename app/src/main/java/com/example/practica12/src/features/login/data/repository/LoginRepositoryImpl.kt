@@ -34,4 +34,17 @@ class LoginRepositoryImpl(
             Result.failure(Exception("Error de conexión: ${e.message}"))
         }
     }
+
+    override suspend fun enviarPushToken(pushToken: String): Result<Unit> {
+        return try {
+            val response = loginService.enviarPushToken(mapOf("push_token" to pushToken))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al enviar token: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

@@ -1,20 +1,24 @@
 package com.example.practica12.src.features.login.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.practica12.src.core.datastore.DataStoreManager
+import com.example.practica12.src.core.domain.model.User
+import com.example.practica12.src.features.login.domain.usecase.LoginUseCase
+import com.example.practica12.src.features.login.domain.usecase.EnviarPushTokenUseCase
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import com.example.practica12.src.features.login.domain.usecase.LoginUseCase
-import com.example.practica12.src.core.domain.model.User
-import com.example.practica12.src.core.datastore.DataStoreManager
 import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
+    private val enviarPushTokenUseCase: EnviarPushTokenUseCase,
     private val dataStoreManager: DataStoreManager
 ) : ViewModel() {
 
@@ -49,7 +53,7 @@ class LoginViewModel @Inject constructor(
             loginUseCase(email, password).fold(
                 onSuccess = { response ->
                     if (response.success && response.user != null) {
-                        // Guardar token y usuario en DataStore
+                        // Guardar en DataStore
                         response.token?.let { token ->
                             viewModelScope.launch {
                                 dataStoreManager.saveToken(token)
@@ -66,6 +70,21 @@ class LoginViewModel @Inject constructor(
                             token = response.token,
                             error = null
                         )
+
+                        // ✅ Enviar token FCM al backend
+                        FirebaseMessaging.getInstance().token.addOnSuccessListener { pushToken ->
+                            viewModelScope.launch {
+                                enviarPushTokenUseCase(pushToken).fold(
+                                    onSuccess = {
+                                        Log.d("FCM", "✅ Token FCM enviado al backend")
+                                    },
+                                    onFailure = { e ->
+                                        Log.e("FCM", "❌ Error al enviar token FCM: ${e.message}")
+                                    }
+                                )
+                            }
+                        }
+
                     } else {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -85,7 +104,6 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    @Suppress("unused")
     fun logout() {
         viewModelScope.launch {
             dataStoreManager.logout()

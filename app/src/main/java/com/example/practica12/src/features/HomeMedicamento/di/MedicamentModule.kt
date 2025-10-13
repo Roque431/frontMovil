@@ -101,4 +101,6 @@ object MedicamentModule {
     ): DeleteMedicamentUseCase {
         return DeleteMedicamentUseCase(repository)
     }
+
+
 }

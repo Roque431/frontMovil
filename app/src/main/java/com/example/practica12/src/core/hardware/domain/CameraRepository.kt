@@ -1,5 +1,6 @@
 package com.example.practica12.src.core.hardware.domain
 
+import android.graphics.Bitmap
 import android.net.Uri
 
 interface CameraRepository {
@@ -8,4 +9,6 @@ interface CameraRepository {
     fun isCameraAvailable(): Boolean
     fun cleanTempFiles()
     suspend fun saveBitmapAsTempFile(bitmap: android.graphics.Bitmap): Result<Uri> // <-- 🆕 AÑADE ESTA LÍNEA
+    suspend fun saveBitmapToInternalStorage(fileName: String, bitmap: Bitmap): String?
+
 }

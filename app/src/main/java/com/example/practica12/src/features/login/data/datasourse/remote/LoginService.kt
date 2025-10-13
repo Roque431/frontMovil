@@ -6,7 +6,11 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
 
+
 interface LoginService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequestDto): Response<LoginResponseDto>
+
+    @POST("users/push-token")
+    suspend fun enviarPushToken(@Body body: Map<String, String>): Response<Unit>
 }

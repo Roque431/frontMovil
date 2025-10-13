@@ -1,61 +1,64 @@
 package com.example.practica12.src.core.navigation
 
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.practica12.src.features.login.presentation.screen.LoginScreen
-import com.example.practica12.src.features.register.presentation.screen.RegisterScreen
-import com.example.practica12.src.features.HomeMedicamento.presentation.screens.HomeScreen
+import androidx.navigation.navArgument
+import com.example.practica12.src.core.security.SecureScreen
 import com.example.practica12.src.features.HomeMedicamento.presentation.screens.AddMedicamentScreen
+import com.example.practica12.src.features.HomeMedicamento.presentation.screens.HomeScreen
+import com.example.practica12.src.features.login.presentation.screen.LoginScreen
 
 @Composable
-fun NavigationWrapper(startDestination: String = "login") {
+fun NavigationWrapper() {
     val navController = rememberNavController()
+    val currentRoute = navController.currentBackStackEntryFlow
+        .collectAsState(initial = navController.currentBackStackEntry)
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
-        composable("login") {
-            LoginScreen(navController = navController)
-        }
+    // ✅ ACTIVAR SEGURIDAD SOLO SI NO ESTAMOS EN LOGIN
+    val shouldBeSecure = remember(currentRoute.value) {
+        currentRoute.value?.destination?.route != "login"
+    }
 
-        composable("register") {
-            RegisterScreen(navController = navController)
-        }
+    // ✅ ENVOLVER TODO EN SecureScreen EXCEPTO LOGIN
+    SecureScreen(enabled = shouldBeSecure) {
+        NavHost(
+            navController = navController,
+            startDestination = "login"
+        ) {
+            // ❌ Login SIN protección (permite capturas)
+            composable("login") {
+                LoginScreen(navController = navController)
+            }
 
-        composable("home") {
-            HomeScreen(navController = navController)
-        }
+            // ✅ Home protegido (seguridad manejada por NavigationWrapper)
+            composable("home") {
+                HomeScreen(navController = navController)
+            }
 
+            // ✅ Add Medicament protegido (seguridad manejada por NavigationWrapper)
+            composable("add_medicament") {
+                AddMedicamentScreen(
+                    navController = navController,
+                    medicamentId = null
+                )
+            }
 
-        composable("medicamentos") {
-            HomeScreen(navController = navController)
-        }
-
-        composable("add_medicament") {
-            AddMedicamentScreen(navController = navController)
-        }
-
-        composable("edit_medicament/{medicamentId}") { backStackEntry ->
-            val medicamentId = backStackEntry.arguments?.getString("medicamentId")?.toIntOrNull()
-            AddMedicamentScreen(
-                navController = navController,
-                medicamentId = medicamentId //
-            )
-        }
-
-        composable("counter") {
-
-        }
-
-        composable("flashlight") {
-
-        }
-
-        composable("rickandmorty") {
-
+            // ✅ Edit Medicament protegido (seguridad manejada por NavigationWrapper)
+            composable(
+                route = "edit_medicament/{medicamentId}",
+                arguments = listOf(
+                    navArgument("medicamentId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val medicamentId = backStackEntry.arguments?.getInt("medicamentId")
+                AddMedicamentScreen(
+                    navController = navController,
+                    medicamentId = medicamentId
+                )
+            }
         }
     }
 }

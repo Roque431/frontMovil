@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.practica12.src.core.security.SecureScreen
 import com.example.practica12.src.features.HomeMedicamento.presentation.viewmodel.AddMedicamentViewModel
 import java.io.File
 
@@ -31,8 +32,8 @@ import java.io.File
 fun AddMedicamentScreen(
     navController: NavController,
     viewModel: AddMedicamentViewModel = hiltViewModel(),
-    medicamentId: Int? = null // ✅ Para editar medicamento
-) {
+    medicamentId: Int? = null
+)  {
     var medicamentName by remember { mutableStateOf("") }
     var dose by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
@@ -95,7 +96,7 @@ fun AddMedicamentScreen(
         }
     }
 
-    // ✅ MANEJO DE ÉXITO MEJORADO
+    // ✅ MANEJO DE ÉXITO
     if (uiState.isSuccess) {
         LaunchedEffect(uiState.isSuccess) {
             println("✅ AddMedicamentScreen: Operación exitosa, notificando refresh")
@@ -259,6 +260,7 @@ fun AddMedicamentScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+
                             isEditMode && uiState.medicamentToEdit?.imageUrl != null -> {
                                 AsyncImage(
                                     model = uiState.medicamentToEdit?.imageUrl,
@@ -266,6 +268,7 @@ fun AddMedicamentScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+
                             isEditMode && uiState.medicamentToEdit?.imagePath != null -> {
                                 AsyncImage(
                                     model = File(uiState.medicamentToEdit?.imagePath!!),
@@ -273,6 +276,7 @@ fun AddMedicamentScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+
                             else -> {
                                 Text(
                                     text = "💊",
@@ -349,4 +353,3 @@ fun AddMedicamentScreen(
         }
     }
 }
-

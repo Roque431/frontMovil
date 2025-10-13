@@ -1,4 +1,4 @@
-package com.example.practica12.src.features.HomeMedicamento.data.worker
+package com.example.practica12.src.features.HomeMedicamento.data.work
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
@@ -66,7 +66,9 @@ class SyncWorker @AssistedInject constructor(
                             medicamentoDao.actualizar(
                                 localMed.copy(
                                     id = serverMed.id,
-                                    isSynced = true
+                                    isSynced = true,
+                                    imageUrl = serverMed.imageUrl,
+                                    imagePath = null
                                 )
                             )
                             sincronizados++

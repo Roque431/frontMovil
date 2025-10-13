@@ -9,6 +9,7 @@ import com.example.practica12.src.core.datastore.DataStoreManager
 import com.example.practica12.src.features.login.data.datasourse.remote.LoginService
 import com.example.practica12.src.features.login.data.repository.LoginRepositoryImpl
 import com.example.practica12.src.features.login.domain.repository.LoginRepository
+import com.example.practica12.src.features.login.domain.usecase.EnviarPushTokenUseCase
 import com.example.practica12.src.features.login.domain.usecase.LoginUseCase
 import javax.inject.Singleton
 
@@ -34,5 +35,10 @@ object LoginModule {
     @Provides
     fun provideLoginUseCase(repository: LoginRepository): LoginUseCase {
         return LoginUseCase(repository)
+    }
+
+    @Provides
+    fun provideEnviarPushTokenUseCase(repository: LoginRepository): EnviarPushTokenUseCase {
+        return EnviarPushTokenUseCase(repository)
     }
 }

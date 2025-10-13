@@ -1,6 +1,7 @@
 package com.example.practica12.src.features.HomeMedicamento.data.repository
 
 import com.example.practica12.src.core.hardware.data.NetworkChecker
+import com.example.practica12.src.core.hardware.domain.CameraRepository
 import com.example.practica12.src.features.HomeMedicamento.data.datasourse.remote.MedicamentService
 import com.example.practica12.src.features.HomeMedicamento.data.local.dao.MedicamentoDao
 import com.example.practica12.src.features.HomeMedicamento.data.mappers.toDomain
@@ -21,7 +22,8 @@ import javax.inject.Inject
 class MedicamentRepositoryImpl @Inject constructor(
     private val medicamentService: MedicamentService,
     private val networkChecker: NetworkChecker,
-    private val medicamentoDao: MedicamentoDao
+    private val medicamentoDao: MedicamentoDao,
+    private val cameraRepository: CameraRepository
 ) : MedicamentRepository {
 
     override suspend fun getAllMedicaments(): Flow<Result<List<Medicament>>> = flow {
@@ -103,27 +105,53 @@ class MedicamentRepositoryImpl @Inject constructor(
 
                 if (response.isSuccessful && medicamentDto != null) {
                     val medicament = medicamentDto.toDomain()
-                    // Si se crea online, se guarda en local como sincronizado y con la URL remota
                     medicamentoDao.insert(medicament.toEntity(isSynced = true))
                     emit(Result.success(medicament))
                 } else {
-                    emit(Result.failure(Exception("Error al crear medicamento")))
+                    // Si falla la creación en línea, guardar localmente como no sincronizado
+                    val medicament = Medicament(
+                        name = name,
+                        dose = dose,
+                        time = time,
+                        imagePath = imageFile?.absolutePath,
+                        imageUrl = null
+                    )
+                    medicamentoDao.insert(medicament.toEntity(isSynced = false))
+                    emit(Result.failure(Exception("Error al crear medicamento en línea, guardado localmente.")))
                 }
             } else {
+                // 🧠 Guardar imagen local si existe
+                val imagePath = imageFile?.let {
+                    val bitmap = android.graphics.BitmapFactory.decodeFile(it.absolutePath)
+                    val fileName = "med_${System.currentTimeMillis()}"
+                    cameraRepository.saveBitmapToInternalStorage(fileName, bitmap)
+                }
+
                 val medicament = Medicament(
                     name = name,
                     dose = dose,
                     time = time,
-                    imagePath = imageFile?.absolutePath, // Guardar solo la ruta local si está offline
-                    imageUrl = null // No hay URL remota si se crea offline
+                    imagePath = imagePath,
+                    imageUrl = null
                 )
+
                 medicamentoDao.insert(medicament.toEntity(isSynced = false))
                 emit(Result.success(medicament))
             }
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            // En caso de excepción, guardar localmente como no sincronizado
+            val medicament = Medicament(
+                name = name,
+                dose = dose,
+                time = time,
+                imagePath = imageFile?.absolutePath,
+                imageUrl = null
+            )
+            medicamentoDao.insert(medicament.toEntity(isSynced = false))
+            emit(Result.failure(Exception("Excepción al crear medicamento, guardado localmente: ${e.message}")))
         }
     }
+
 
     override suspend fun updateMedicament(
         id: Int,
@@ -133,45 +161,141 @@ class MedicamentRepositoryImpl @Inject constructor(
         imageFile: File?
     ): Flow<Result<Medicament>> = flow {
         try {
-            val nameBody = name.toRequestBody("text/plain".toMediaTypeOrNull())
-            val doseBody = dose.toRequestBody("text/plain".toMediaTypeOrNull())
-            val timeBody = time.toRequestBody("text/plain".toMediaTypeOrNull())
+            if (networkChecker.isOnline()) {
+                val nameBody = name.toRequestBody("text/plain".toMediaTypeOrNull())
+                val doseBody = dose.toRequestBody("text/plain".toMediaTypeOrNull())
+                val timeBody = time.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            val imagePart = imageFile?.let {
-                val requestBody = it.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                MultipartBody.Part.createFormData("image", it.name, requestBody)
-            }
+                val imagePart = imageFile?.let {
+                    val requestBody = it.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("image", it.name, requestBody)
+                }
 
-            val response = medicamentService.updateMedicament(id, nameBody, doseBody, timeBody, imagePart)
-            val medicamentDto = response.body()?.medicament
+                val response = medicamentService.updateMedicament(id, nameBody, doseBody, timeBody, imagePart)
+                val medicamentDto = response.body()?.medicament
 
-            if (response.isSuccessful && medicamentDto != null) {
-                // Al actualizar online, también actualizamos la base de datos local
-                val medicament = medicamentDto.toDomain()
-                medicamentoDao.actualizar(medicament.toEntity(isSynced = true))
-                emit(Result.success(medicament))
+                if (response.isSuccessful && medicamentDto != null) {
+                    // Al actualizar online, también actualizamos la base de datos local
+                    val medicament = medicamentDto.toDomain()
+                    medicamentoDao.actualizar(medicament.toEntity(isSynced = true))
+                    emit(Result.success(medicament))
+                } else {
+                    // Si falla la actualización en línea, marcar localmente como no sincronizado
+                    val existingMedicament = medicamentoDao.getMedicamentById(id) // Asumiendo que existe este método
+                    val medicamentToUpdate = existingMedicament?.copy(
+                        nombre = name,
+                        dosis = dose,
+                        hora = time,
+                        isSynced = false
+                    ) ?: Medicament(
+                        id = id,
+                        name = name,
+                        dose = dose,
+                        time = time,
+                        imagePath = imageFile?.absolutePath,
+                        imageUrl = null
+                    ).toEntity(isSynced = false)
+
+                    medicamentoDao.actualizar(medicamentToUpdate)
+                    emit(Result.failure(Exception("Error al actualizar medicamento en línea, marcado para sincronizar.")))
+                }
             } else {
-                emit(Result.failure(Exception("Error al actualizar medicamento")))
+                // Sin conexión, actualizar localmente y marcar como no sincronizado
+                val existingMedicament = medicamentoDao.getMedicamentById(id) // Asumiendo que existe este método
+                val medicamentToUpdate = existingMedicament?.copy(
+                    nombre = name,
+                    dosis = dose,
+                    hora = time,
+                    isSynced = false
+                ) ?: Medicament(
+                    id = id,
+                    name = name,
+                    dose = dose,
+                    time = time,
+                    imagePath = imageFile?.absolutePath,
+                    imageUrl = null
+                ).toEntity(isSynced = false)
+
+                medicamentoDao.actualizar(medicamentToUpdate)
+                emit(Result.failure(Exception("Sin conexión, medicamento actualizado localmente y marcado para sincronizar.")))
             }
         } catch (e: Exception) {
-            emit(Result.failure(e))
+            // En caso de excepción, marcar localmente como no sincronizado
+            val existingMedicament = medicamentoDao.getMedicamentById(id) // Asumiendo que existe este método
+            val medicamentToUpdate = existingMedicament?.copy(
+                nombre = name,
+                dosis = dose,
+                hora = time,
+                isSynced = false
+            ) ?: Medicament(
+                id = id,
+                name = name,
+                dose = dose,
+                time = time,
+                imagePath = imageFile?.absolutePath,
+                imageUrl = null
+            ).toEntity(isSynced = false)
+
+            medicamentoDao.actualizar(medicamentToUpdate)
+            emit(Result.failure(Exception("Excepción al actualizar medicamento, marcado para sincronizar: ${e.message}")))
         }
     }
 
     override suspend fun deleteMedicament(id: Int): Flow<Result<Boolean>> = flow {
         try {
-            val response = medicamentService.deleteMedicament(id)
-            if (response.isSuccessful) {
-                // Si se elimina del servidor, también se elimina de la base de datos local
+            if (networkChecker.isOnline()) {
+                val response = medicamentService.deleteMedicament(id)
+                if (response.isSuccessful) {
+                    // Si se elimina del servidor, también se elimina de la base de datos local
+                    medicamentoDao.deleteById(id)
+                    emit(Result.success(true))
+                } else {
+                    // Si falla la eliminación en línea, no eliminar localmente y marcar para reintentar
+                    emit(Result.failure(Exception("Error al eliminar medicamento en línea, reintentar.")))
+                }
+            } else {
+                // Sin conexión, eliminar localmente y no intentar sincronizar (asumimos que se eliminará en la próxima sincronización si existe en el servidor)
                 medicamentoDao.deleteById(id)
                 emit(Result.success(true))
+            }
+        } catch (e: Exception) {
+            // En caso de excepción, no eliminar localmente y marcar para reintentar
+            emit(Result.failure(e))
+        }
+    }
+    override suspend fun syncPendingMedicaments(): Flow<Result<Unit>> = flow {
+        try {
+            if (networkChecker.isOnline()) {
+                val pendientes = medicamentoDao.getNoSincronizados()
+                pendientes.forEach { localMedicament ->
+                    val nameBody = localMedicament.nombre.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val doseBody = localMedicament.dosis.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val timeBody = localMedicament.hora.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                    val imagePart = localMedicament.imagePath?.let { path ->
+                        val file = File(path)
+                        val requestBody = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                        MultipartBody.Part.createFormData("image", file.name, requestBody)
+                    }
+
+                    val response = medicamentService.createMedicament(nameBody, doseBody, timeBody, imagePart)
+                    val medicamentDto = response.body()?.medicament
+
+                    if (response.isSuccessful && medicamentDto != null) {
+                        val synced = medicamentDto.toDomain().copy(imagePath = localMedicament.imagePath)
+                        medicamentoDao.actualizar(synced.toEntity(isSynced = true))
+                    }
+                }
+                emit(Result.success(Unit))
             } else {
-                emit(Result.failure(Exception("Error al eliminar medicamento")))
+                emit(Result.failure(Exception("Sin conexión a internet")))
             }
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
     }
 }
+
+
 
 

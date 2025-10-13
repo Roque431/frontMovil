@@ -27,4 +27,7 @@ interface MedicamentRepository {
     ): Flow<Result<Medicament>>
 
     suspend fun deleteMedicament(id: Int): Flow<Result<Boolean>>
+
+    suspend fun syncPendingMedicaments(): Flow<Result<Unit>>
+
 }
